@@ -22,6 +22,10 @@ const getHexColor = (tailwindColor) => {
         'bg-yellow-500': '#EAB308',
         'bg-emerald-500': '#10B981',
         'bg-orange-500': '#F97316',
+        'bg-blue-500': '#3B82F6',
+        'bg-indigo-500': '#6366F1',
+        'bg-purple-500': '#A855F7',
+        'bg-pink-500': '#EC4899',
     };
     return colorMap[tailwindColor] || '#000000';
 };

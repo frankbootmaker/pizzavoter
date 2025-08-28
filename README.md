@@ -79,6 +79,23 @@ npm run start
 yarn start
 ```
 
+## Tailwind CSS (compiled)
+
+The app now uses compiled Tailwind instead of the CDN script.
+
+- Root layout imports styles: `src/app/layout.tsx` → `import './globals.css'`.
+- CDN script removed from layout to prevent duplicate styles and improve performance.
+- Tailwind/PostCSS config is already set up (`tailwind.config.ts`, `postcss.config.js`).
+
+If styles don’t load in development, restart the dev server: `npm run dev`.
+
+## Chart Colors
+
+The pie chart now supports all admin-selectable Tailwind colors (500 shade):
+
+- Supported: `bg-red-500`, `bg-green-500`, `bg-yellow-500`, `bg-emerald-500`, `bg-orange-500`, `bg-blue-500`, `bg-indigo-500`, `bg-purple-500`, `bg-pink-500`.
+- Add more mappings in `src/app/page.tsx` (`getHexColor`) if you introduce additional colors.
+
 ## Admin Management API (server-side)
 
 This app exposes serverless routes to manage admins using the Firebase Admin SDK. Only existing admins can add/remove admins.
