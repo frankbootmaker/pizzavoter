@@ -7,6 +7,16 @@ import EmojiPickerModal from '../components/EmojiPickerModal'; // Import the new
 import Link from 'next/link'; // Import Link for navigation
 import { ArrowLeft } from 'lucide-react'; // Import an icon for back navigation
 
+interface Pizza {
+    id: string;
+    name: string;
+    emoji: string;
+    color: string;
+    votes: number;
+    voters: string[];
+}
+
+
 const AdminPage = () => {
     const [pizzas, setPizzas] = useState([]);
     const [user, setUser] = useState(null);
@@ -34,7 +44,7 @@ const AdminPage = () => {
 
         const pizzaCollection = collection(db, 'pizzas');
         const pizzaUnsubscribe = onSnapshot(pizzaCollection, (snapshot) => {
-            const pizzaData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const pizzaData: Pizza[] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Pizza));
             setPizzas(pizzaData);
         });
 

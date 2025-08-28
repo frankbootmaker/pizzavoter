@@ -5,6 +5,16 @@ import { db, auth } from '../firebase';
 import { collection, onSnapshot, doc, updateDoc, increment, writeBatch, getDocs, arrayUnion, runTransaction, getDoc } from 'firebase/firestore';
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 
+interface Pizza {
+  id: string;
+  name: string;
+  emoji: string;
+  color: string;
+  votes: number;
+  voters: string[];
+}
+
+
 const getHexColor = (tailwindColor) => {
     const colorMap = {
         'bg-red-500': '#EF4444',
@@ -131,7 +141,7 @@ const PizzaVotingApp = () => {
 
         const pizzaCollection = collection(db, 'pizzas');
         const pizzaUnsubscribe = onSnapshot(pizzaCollection, (snapshot) => {
-          const pizzaData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          const pizzaData: Pizza[] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Pizza));
           setPizzas(pizzaData);
           const userVoted = pizzaData.some(p => p.voters && p.voters.includes(user.uid));
           setHasVoted(userVoted);
