@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { ToastProvider } from './components/Toast'
 
 export const metadata: Metadata = {
   title: 'Pizza Voting App',
@@ -15,7 +16,11 @@ export default function RootLayout({
       <head>
         <script src="https://cdn.tailwindcss.com"></script>
       </head>
-      <body>{children}</body>
+      <body>
+        <ToastProvider>
+          {children}
+        </ToastProvider>
+      </body>
     </html>
   )
 }

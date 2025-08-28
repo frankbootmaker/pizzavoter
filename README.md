@@ -79,6 +79,33 @@ npm run start
 yarn start
 ```
 
+## Admin Management API (server-side)
+
+This app exposes serverless routes to manage admins using the Firebase Admin SDK. Only existing admins can add/remove admins.
+
+Routes (App Router):
+- `GET /api/admins` – List admins (admin only)
+- `POST /api/admins` – Add admin by `{ email }` or `{ uid }` (admin only)
+- `DELETE /api/admins/:uid` – Remove admin, with guard against deleting the last admin
+
+Requirements:
+- Install dependency: `npm install firebase-admin`
+- Set server-only environment variables (no `NEXT_PUBLIC_` prefix):
+  - `FIREBASE_PROJECT_ID`
+  - `FIREBASE_CLIENT_EMAIL`
+  - `FIREBASE_PRIVATE_KEY` (use a JSON private key; if providing via `.env`, replace line breaks with `\n`)
+
+Example `.env.local` (server keys should be kept secret and not committed):
+```
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_CLIENT_EMAIL=your-service-account@your-project-id.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+```
+
+Bootstrap the first admin:
+- Manually create `admins/{yourUid}` in Firestore via the Firebase Console, or
+- Temporarily create the document via a script. The API requires an existing admin to authorize further changes.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a pull request or open an issue.

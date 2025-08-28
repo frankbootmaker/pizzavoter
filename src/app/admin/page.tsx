@@ -4,6 +4,7 @@ import { db, auth } from '../firebase-config';
 import { collection, addDoc, onSnapshot, doc, deleteDoc, getDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import EmojiPickerModal from '../components/EmojiPickerModal'; // Import the new component
+import { useToast } from '../components/Toast';
 import Link from 'next/link'; // Import Link for navigation
 import { ArrowLeft } from 'lucide-react'; // Import an icon for back navigation
 
@@ -23,7 +24,10 @@ const AdminPage = () => {
     const [isAdmin, setIsAdmin] = useState(false);
     const [newPizza, setNewPizza] = useState({ name: '', emoji: '', color: 'bg-red-500' });
     const [loading, setLoading] = useState(true);
+    const [admins, setAdmins] = useState<any[]>([]);
+    const [newAdminEmail, setNewAdminEmail] = useState('');
     const [showEmojiPicker, setShowEmojiPicker] = useState(false); // New state for modal visibility
+    const { showToast } = useToast();
 
     useEffect(() => {
         const authUnsubscribe = onAuthStateChanged(auth, (user) => {
@@ -54,16 +58,98 @@ const AdminPage = () => {
         };
     }, []);
 
+    // Fetch admins via server API when admin is confirmed
+    useEffect(() => {
+        const fetchAdmins = async () => {
+            if (!isAdmin) return;
+            const token = await auth.currentUser?.getIdToken();
+            const res = await fetch('/api/admins', {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setAdmins(data.admins || []);
+            } else {
+                showToast('Nem sikerült betölteni az adminokat', 'error');
+            }
+        };
+        fetchAdmins();
+    }, [isAdmin]);
+
     const handleAddPizza = async (e) => {
         e.preventDefault();
         if (!isAdmin) return;
-        await addDoc(collection(db, 'pizzas'), { ...newPizza, votes: 0, voters: [] });
-        setNewPizza({ name: '', emoji: '', color: 'bg-red-500' });
+        try {
+            await addDoc(collection(db, 'pizzas'), { ...newPizza, votes: 0, voters: [] });
+            setNewPizza({ name: '', emoji: '', color: 'bg-red-500' });
+            showToast('Pizza hozzáadva', 'success');
+        } catch (err) {
+            showToast('Nem sikerült hozzáadni a pizzát', 'error');
+        }
     };
 
     const handleDeletePizza = async (id) => {
         if (!isAdmin) return;
-        await deleteDoc(doc(db, 'pizzas', id));
+        try {
+            await deleteDoc(doc(db, 'pizzas', id));
+            showToast('Pizza törölve', 'success');
+        } catch (err) {
+            showToast('Nem sikerült törölni a pizzát', 'error');
+        }
+    };
+
+    const handleAddAdmin = async (e) => {
+        e.preventDefault();
+        if (!isAdmin || !newAdminEmail) return;
+        const token = await auth.currentUser?.getIdToken();
+        const res = await fetch('/api/admins', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ email: newAdminEmail }),
+        });
+        if (res.ok) {
+            setNewAdminEmail('');
+            showToast('Admin hozzáadva', 'success');
+            // Refetch to ensure consistency
+            try {
+                const token2 = await auth.currentUser?.getIdToken();
+                const r2 = await fetch('/api/admins', { headers: { Authorization: `Bearer ${token2}` } });
+                if (r2.ok) {
+                    const data = await r2.json();
+                    setAdmins(data.admins || []);
+                }
+            } catch {}
+        } else {
+            const data = await res.json().catch(() => ({}));
+            showToast(data.error || 'Nem sikerült hozzáadni az admint', 'error');
+        }
+    };
+
+    const handleRemoveAdmin = async (uid: string) => {
+        if (!isAdmin) return;
+        const token = await auth.currentUser?.getIdToken();
+        const res = await fetch(`/api/admins/${uid}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+            showToast('Admin eltávolítva', 'success');
+            // Refetch to ensure we didn't remove last or desync
+            try {
+                const token2 = await auth.currentUser?.getIdToken();
+                const r2 = await fetch('/api/admins', { headers: { Authorization: `Bearer ${token2}` } });
+                if (r2.ok) {
+                    const data = await r2.json();
+                    setAdmins(data.admins || []);
+                }
+            } catch {}
+        } else {
+            const data = await res.json().catch(() => ({}));
+            showToast(data.error || 'Nem sikerült eltávolítani az admint', 'error');
+        }
     };
     
     if (loading) {
@@ -155,6 +241,42 @@ const AdminPage = () => {
                             onClose={() => setShowEmojiPicker(false)}
                         />
                     )}
+
+                    {/* Admin management section */}
+                    <div className="mt-12 p-6 bg-gray-50 rounded-2xl shadow-md">
+                        <h2 className="text-2xl font-bold text-gray-800 mb-4">Rendszer Adminok</h2>
+                        <form onSubmit={handleAddAdmin} className="flex items-center gap-3 mb-4">
+                            <input
+                                type="email"
+                                placeholder="Új admin e-mail címe"
+                                value={newAdminEmail}
+                                onChange={(e) => setNewAdminEmail(e.target.value)}
+                                className="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200">
+                                Hozzáadás
+                            </button>
+                        </form>
+                        <div className="space-y-2">
+                            {admins.map((a) => (
+                                <div key={a.id} className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200">
+                                    <div className="text-gray-700">
+                                        <div className="font-medium">UID: {a.id}</div>
+                                        {a.email && <div className="text-sm text-gray-500">{a.email}{a.displayName ? ` • ${a.displayName}` : ''}</div>}
+                                    </div>
+                                    <button
+                                        onClick={() => handleRemoveAdmin(a.id)}
+                                        className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200"
+                                    >
+                                        Eltávolítás
+                                    </button>
+                                </div>
+                            ))}
+                            {admins.length === 0 && (
+                                <div className="text-sm text-gray-500">Nincsenek adminok listázva.</div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
