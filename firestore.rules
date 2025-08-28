@@ -1,0 +1,29 @@
+rules_version = '2';
+ service cloud.firestore {
+   match /databases/{database}/documents {
+     match /pizzas/{pizzaId} {
+       allow read;
+       // Allow admins to create, update, and delete pizzas
+       allow create, update, delete: if
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+
+       // Allow authenticated users to update votes and voters, with strict validation
+       allow update: if request.auth.uid != null &&
+                      // Ensure only 'votes' and 'voters' are affected
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['votes', 'voters']) &&
+                      // Ensure user has not voted before
+                      !resource.data.voters.hasAny([request.auth.uid]) &&
+                      // Ensure votes is incremented by exactly 1
+                      request.resource.data.votes == resource.data.votes + 1 &&
+                      // Ensure user's UID is added to voters array and no other UIDs are removed
+                      request.resource.data.voters.size() == resource.data.voters.size() + 1 &&
+                      request.resource.data.voters.hasAll(resource.data.voters) &&
+                      request.resource.data.voters.hasAny([request.auth.uid]);
+      }
+     match /admins/{adminId} {
+       allow read;
+       // No write access for admins collection from client-side, managed manually or via backend
+       allow create, update, delete: if false;
+     }
+   }
+ }
