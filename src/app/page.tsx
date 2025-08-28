@@ -1,6 +1,6 @@
 'use client'
 import React, { useState, useEffect } from 'react';
-import { Pizza, Users, Trophy, QrCode } from 'lucide-react';
+import { Pizza, Users, Trophy, QrCode, Wifi, WifiOff } from 'lucide-react';
 
 const PizzaVotingApp = () => {
   const [votes, setVotes] = useState({
@@ -13,6 +13,8 @@ const PizzaVotingApp = () => {
 
   const [hasVoted, setHasVoted] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [isConnected, setIsConnected] = useState(true);
+  const [lastUpdate, setLastUpdate] = useState(Date.now());
 
   // 🎯 CUSTOMIZE YOUR PIZZAS HERE! 🎯
   const pizzaOptions = [
@@ -22,21 +24,96 @@ const PizzaVotingApp = () => {
     { id: 'veggie', name: 'Vegán Különleges', emoji: '🥬', color: 'bg-emerald-500' },
     { id: 'meatLovers', name: 'Hús Imádó', emoji: '🥓', color: 'bg-orange-500' }
   ];
-  
-  // 📝 HOW TO CUSTOMIZE:
-  // - 'id': Keep this unique for each pizza (used internally)
-  // - 'name': Change this to whatever you want to display
-  // - 'emoji': Any emoji you like! Try: 🧀 🌶️ 🫒 🥗 🍄 🐟 🥩
-  // - 'color': Tailwind CSS background colors like bg-blue-500, bg-purple-500, etc.
 
-  const handleVote = (pizzaId) => {
+  // 🔥 REAL-TIME FUNCTIONALITY 🔥
+  // This simulates a real-time database connection
+  // In production, replace this with Firebase, Supabase, or Socket.io
+  
+  const API_ENDPOINT = 'https://api.jsonbin.io/v3/b/YOUR_BIN_ID'; // Replace with your endpoint
+  
+  // Load votes from server
+  const loadVotes = async () => {
+    try {
+      // For demo purposes, we'll use localStorage as a "database"
+      // In production, this would be a real API call
+      const savedVotes = localStorage.getItem('pizzaVotes');
+      if (savedVotes) {
+        const parsedVotes = JSON.parse(savedVotes);
+        setVotes(parsedVotes.votes || votes);
+        setLastUpdate(Date.now());
+      }
+      setIsConnected(true);
+    } catch (error) {
+      console.error('Failed to load votes:', error);
+      setIsConnected(false);
+    }
+  };
+
+  // Save votes to server
+  const saveVotes = async (newVotes) => {
+    try {
+      // For demo purposes, we'll use localStorage as a "database"
+      // In production, this would be a real API call
+      const voteData = {
+        votes: newVotes,
+        timestamp: Date.now()
+      };
+      localStorage.setItem('pizzaVotes', JSON.stringify(voteData));
+      
+      // Broadcast to other tabs/windows (simulates real-time updates)
+      window.dispatchEvent(new CustomEvent('votesUpdated', { detail: newVotes }));
+      
+      setIsConnected(true);
+    } catch (error) {
+      console.error('Failed to save votes:', error);
+      setIsConnected(false);
+    }
+  };
+
+  // Listen for real-time updates
+  useEffect(() => {
+    // Load initial votes
+    loadVotes();
+
+    // Listen for updates from other tabs/windows
+    const handleVotesUpdate = (event) => {
+      setVotes(event.detail);
+      setLastUpdate(Date.now());
+    };
+
+    // Listen for storage changes (other tabs voting)
+    const handleStorageChange = (event) => {
+      if (event.key === 'pizzaVotes') {
+        loadVotes();
+      }
+    };
+
+    window.addEventListener('votesUpdated', handleVotesUpdate);
+    window.addEventListener('storage', handleStorageChange);
+
+    // Poll for updates every 2 seconds (simulates real-time)
+    const interval = setInterval(loadVotes, 2000);
+
+    return () => {
+      window.removeEventListener('votesUpdated', handleVotesUpdate);
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const handleVote = async (pizzaId) => {
     if (hasVoted) return;
     
-    setVotes(prev => ({
-      ...prev,
-      [pizzaId]: prev[pizzaId] + 1
-    }));
+    const newVotes = {
+      ...votes,
+      [pizzaId]: votes[pizzaId] + 1
+    };
+    
+    setVotes(newVotes);
     setHasVoted(true);
+    
+    // Save to "database"
+    await saveVotes(newVotes);
     
     // Show thank you message for 2 seconds, then show results
     setTimeout(() => {
@@ -47,17 +124,39 @@ const PizzaVotingApp = () => {
   const totalVotes = Object.values(votes).reduce((sum, count) => sum + count, 0);
   const winner = Object.entries(votes).reduce((a, b) => votes[a[0]] > votes[b[0]] ? a : b)[0];
 
-  const resetVoting = () => {
-    setVotes({
+  const resetVoting = async () => {
+    const resetVotes = {
       pepperoni: 0,
       margherita: 0,
       hawaiian: 0,
       veggie: 0,
       meatLovers: 0
-    });
+    };
+    
+    setVotes(resetVotes);
     setHasVoted(false);
     setShowResults(false);
+    
+    // Save reset state to "database"
+    await saveVotes(resetVotes);
   };
+
+  // Connection status indicator
+  const ConnectionStatus = () => (
+    <div className={`flex items-center text-sm ${isConnected ? 'text-green-600' : 'text-red-600'}`}>
+      {isConnected ? (
+        <>
+          <Wifi className="w-4 h-4 mr-1" />
+          <span>Élő kapcsolat</span>
+        </>
+      ) : (
+        <>
+          <WifiOff className="w-4 h-4 mr-1" />
+          <span>Kapcsolat megszakadt</span>
+        </>
+      )}
+    </div>
+  );
 
   if (hasVoted && !showResults) {
     return (
@@ -66,12 +165,15 @@ const PizzaVotingApp = () => {
           <div className="animate-bounce mb-6">
             <Pizza className="w-24 h-24 text-orange-500 mx-auto" />
           </div>
-                      <h2 className="text-3xl font-bold text-gray-800 mb-4">Köszönjük a szavazást! 🎉</h2>
+          <h2 className="text-3xl font-bold text-gray-800 mb-4">Köszönjük a szavazást! 🎉</h2>
           <p className="text-lg text-gray-600">A szavazatod beszámítottuk!</p>
           <div className="mt-6 animate-pulse">
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div className="bg-orange-500 h-2 rounded-full animate-pulse" style={{width: '100%'}}></div>
             </div>
+          </div>
+          <div className="mt-4">
+            <ConnectionStatus />
           </div>
         </div>
       </div>
@@ -87,6 +189,9 @@ const PizzaVotingApp = () => {
               <Trophy className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
               <h1 className="text-4xl font-bold text-gray-800 mb-2">Pizza Szavazás Eredményei! 🏆</h1>
               <p className="text-xl text-gray-600">Összes szavazat: {totalVotes}</p>
+              <div className="mt-2">
+                <ConnectionStatus />
+              </div>
             </div>
 
             <div className="space-y-4 mb-8">
@@ -166,6 +271,9 @@ const PizzaVotingApp = () => {
               <Users className="w-5 h-5 mr-2" />
               <span>{totalVotes} szavazat eddig</span>
             </div>
+            <div className="mt-2">
+              <ConnectionStatus />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
@@ -211,16 +319,13 @@ const PizzaVotingApp = () => {
         <div className="mt-8 bg-white rounded-2xl p-6 shadow-xl">
           <div className="flex items-center mb-4">
             <QrCode className="w-6 h-6 text-blue-500 mr-2" />
-            <h3 className="text-lg font-bold text-gray-800">A prezentációhoz:</h3>
+            <h3 className="text-lg font-bold text-gray-800">Valós Idejű Szavazás:</h3>
           </div>
-          <p className="text-gray-600 mb-2">
-            <strong>QR Kód Beállítás:</strong> A diákokkal való megosztáshoz szükséges:
-          </p>
-          <ol className="list-decimal list-inside text-gray-600 space-y-1 ml-4">
-            <li>A kód feltöltése ingyenes hosting szolgáltatásra (mint Vercel, Netlify, vagy GitHub Pages)</li>
-            <li>QR kód generálása a feltöltött URL-hez egy QR generátorral</li>
-            <li>QR kód megjelenítése a diákok számára</li>
-          </ol>
+          <div className="space-y-2 text-gray-600">
+            <p><strong>🔥 Demo verzió:</strong> Ez a verzió localStorage-t használ a szavazatok tárolására.</p>
+            <p><strong>📱 Több eszköz:</strong> Nyiss meg több böngésző tabot és szavazz - látni fogod az élő frissítéseket!</p>
+            <p><strong>🚀 Éles verzióhoz:</strong> Használj Firebase, Supabase vagy Socket.io-t valós real-time funkcionalitásért.</p>
+          </div>
         </div>
       </div>
     </div>
