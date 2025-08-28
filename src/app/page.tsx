@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import { Pizza, Users, Trophy, QrCode, Wifi, WifiOff } from 'lucide-react';
-import { db, auth } from './firebase';
+import { db, auth } from '../firebase';
 import { collection, onSnapshot, doc, updateDoc, increment, writeBatch, getDocs, arrayUnion, runTransaction, getDoc } from 'firebase/firestore';
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 
