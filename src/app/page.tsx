@@ -367,7 +367,7 @@ const PizzaVotingApp = () => {
           <div className="text-center mb-8">
             <Pizza className="w-20 h-20 text-orange-500 mx-auto mb-4 animate-bounce" />
             <h1 className="text-4xl font-bold text-gray-800 mb-2">Pizza Szavazás Ideje! 🍕</h1>
-            <p className="text-xl text-gray-600">Válaszd ki a kedvenc pizzádat ebédre!</p>
+            <p className="text-xl text-gray-600">Válaszd ki a kedvenc pizzádat uzsonnára!</p>
             <div className="flex items-center justify-center mt-4 text-gray-500">
               <Users className="w-5 h-5 mr-2" />
               <span>{totalVotes} szavazat eddig</span>
