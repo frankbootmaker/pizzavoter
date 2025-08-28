@@ -1,3 +1,4 @@
+'use client'
 import React, { useState, useEffect } from 'react';
 import { Pizza, Users, Trophy, QrCode } from 'lucide-react';
 
@@ -226,4 +227,6 @@ const PizzaVotingApp = () => {
   );
 };
 
-export default PizzaVotingApp;
+export default function Home() {
+  return <PizzaVotingApp />;
+}
